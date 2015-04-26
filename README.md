@@ -9,6 +9,9 @@ Start Erlang with `erl -pa ebin`
 
 Run chat server: `application:start(chat).`
 
+You can use a program such as telnet or netcat to connect to the 
+
+server as a client and communicate with it: `telnet localhost 6667`
 ## References
 
 [Learn You Some Erlang for Great Good!](http://learnyousomeerlang.com/)
