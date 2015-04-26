@@ -1,0 +1,4 @@
+[ -d ebin ] ||{ mkdir ebin ; }
+rm -f ebin/*
+erl -make 
+cp src/chat.app ebin/
