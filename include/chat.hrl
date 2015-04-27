@@ -1,7 +1,7 @@
 
 -define(CRLF, "\r\n").
--define(CR,13).
--define(LF,10).
+-define(CR,"\r").
+-define(LF,"\n").
 
 -define(PRIVATE, "!p:").
 -define(HELP, "!h").
