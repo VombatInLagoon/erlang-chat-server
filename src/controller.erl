@@ -1,3 +1,10 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Controller is responsible mainly for adding users to the data center and   %%
+%% removing their name when they disconnect from the server.                  %%
+%% It does its job via getting requests from chat server.                     %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 -module(controller).
 -behaviour(gen_server).
 
