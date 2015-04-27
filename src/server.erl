@@ -8,6 +8,8 @@
 -module(server).
 -behaviour(gen_server).
 
+-include("chat.hrl").
+
 -record(state, {name, % client's name
                 next,
                 socket}). % the current socket
@@ -67,31 +69,31 @@ handle_cast({nicklist, Nick}, S) ->
     {noreply, S#state{name=Nick, next=chat}}.
 
 %% clients input comming from socket
-handle_info({tcp, Socket, "!q"++_}, S = #state{name=Nick, next=chat}) ->
+handle_info({tcp, Socket, ?QUIT++_}, S = #state{name=Nick, next=chat}) ->
     send(Socket, "Goodbye ~p", [Nick]),
     io:format("~p Left the chat server! ~n", [Nick]),
     gen_server:call(controller, {disconnect, Nick}),
     gen_tcp:close(S#state.socket),
     {stop, normal, S};
 
-handle_info({tcp, Socket, "!n"++_}, S = #state{name=Nick, next=chat}) ->
+handle_info({tcp, Socket, ?NICKS++_}, S = #state{name=Nick, next=chat}) ->
     gen_server:cast(self(), {nicklist, Nick}),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
-handle_info({tcp, Socket, "!p:"++Rest}, S = #state{name=Nick, next=chat}) ->
+handle_info({tcp, Socket, ?PRIVATE++Rest}, S = #state{name=Nick, next=chat}) ->
     {Recv, [_|Msg]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Rest),
     gen_server:cast(self(), {private_msg, Socket, Nick, Recv, clean(Msg)}),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
-handle_info({tcp, Socket, "!h"++_}, S = #state{name=Nick, next=chat}) ->
+handle_info({tcp, Socket, ?HELP++_}, S = #state{name=Nick, next=chat}) ->
     help(Socket, Nick),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
 handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, next=nick}) 
-  when Str =:= "\n" ; Str =:= "\r\n" ->
+  when Str =:= ?CRLF ; Str =:= ?CR ; Str =:= ?LF ->
     refresh_socket(Socket),
     {noreply, S#state{socket=Socket, next=nick}};
 
@@ -101,11 +103,11 @@ handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, next=nick}) ->
     {noreply, S#state{socket=Socket, next=nick}};
 
 handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, name=Nick, next=chat})
-  when Str =:= "\n" ; Str =:= "\r\n" ->
+  when Str =:= ?CRLF ; Str =:= ?CR ; Str =:= ?LF ->
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
-handle_info({tcp, _Socket, "\\"++_Str}, S = #state{socket=Socket, name=Nick, next=chat}) ->
+handle_info({tcp, _Socket, ?IGNORE++_Str}, S = #state{socket=Socket, name=Nick, next=chat}) ->
     io:format("We decided to keep this secret! ;-)~n", []),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
