@@ -112,7 +112,6 @@ terminate(_Reason, _State) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Internal functions.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 quit(Socket, Nick, S) ->
     send(Socket, "Goodbye ~p", [Nick]),
     io:format("~p Left the chat server! ~n", [Nick]),
