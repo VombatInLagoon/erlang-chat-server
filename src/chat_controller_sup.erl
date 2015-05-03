@@ -7,10 +7,10 @@
 -module(chat_controller_sup).
 -behaviour(supervisor).
 
-%%% API
+%% API
 -export([start_link/0]).
 
-%%% supervisor callback
+%% supervisor callback
 -export([init/1]).
 
 -include("chat.hrl").

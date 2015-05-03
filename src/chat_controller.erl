@@ -10,10 +10,10 @@
 -module(chat_controller).
 -behaviour(gen_server).
 
-%%% API
+%% API
 -export([start/0]).
 
-%%% gen_server callbacks
+%% gen_server callbacks
 -export([init/1, 
          handle_call/3, 
          handle_cast/2, 
