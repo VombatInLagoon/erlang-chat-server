@@ -1,12 +1,19 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% Controller is responsible mainly for adding users to the data center and   %%
-%% removing their name when they disconnect from the server.                  %%
-%% It does its job via getting requests from chat server.                     %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+%%%-----------------------------------------------------------------------------
+%%% @author Amin 
+%%% @copyright 2015 Free software
+%%% @doc Controller is responsible mainly for adding users to the data center 
+%%%      and removing their name when they disconnect from the server.                
+%%%      It does its job via getting requests from chat server.                   
+%%%
+%%% @end
+%%%-----------------------------------------------------------------------------
 -module(chat_controller).
 -behaviour(gen_server).
 
+%%% API
+-export([start/0]).
+
+%%% gen_server callbacks
 -export([init/1, 
          handle_call/3, 
          handle_cast/2, 
@@ -14,10 +21,24 @@
          terminate/2,
          code_change/3]).
 
--export([start/0]).
+%%%=============================================================================
+%%% API
+%%%=============================================================================
 
+%%------------------------------------------------------------------------------
+%% @doc Starts chat server controller.
+%%
+%% @spec start() -> {ok, Pid}
+%% where 
+%%  Pid = pid()
+%% @end
+%%------------------------------------------------------------------------------
 start() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+%%%=============================================================================
+%%% gen_server callbacks
+%%%=============================================================================
 
 init([]) ->
     % dictionary is used to keep track of online users
@@ -82,7 +103,10 @@ terminate(_Reason, _State) ->
 code_change(_OldVersion, State, _Extra) -> 
     {ok, State}.
  
-%% Internal functions
+%%%=============================================================================
+%%% Internal functions
+%%%=============================================================================
+
 broadcast(Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
     Sockets = [Value || {_, [Value|_]} <- dict:to_list(dict:erase(Nick, Users))],
@@ -109,6 +133,10 @@ private_message(Recv, Nick, Msg, Users) ->
         _ ->
             ok
     end.
+
+%%%=============================================================================
+%%% Helper functions
+%%%=============================================================================
 
 format_message(Nick, Msg) ->
     FormattedMsg = format_time() ++ " " ++ Nick ++ ":" ++ Msg ++ "\n",

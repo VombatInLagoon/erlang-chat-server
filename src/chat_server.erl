@@ -1,6 +1,6 @@
 %%%-----------------------------------------------------------------------------
 %%% @author Amin
-%%% @copyright Free Software
+%%% @copyright 2015 Free Software
 %%% @doc Server is responsible to accept connections from clients and manage the    
 %%%      chat sessions.                                                             
 %%%      It works with controller process to keep track of users who join and 
@@ -32,7 +32,8 @@
 %%%=============================================================================
 
 %%------------------------------------------------------------------------------
-%% @doc Starts the chat server. 
+%% @doc Starts chat server.
+%% 
 %% @spec start_link(Socket::socket()) -> {ok, Pid}
 %% where 
 %%  Pid = pid()   
@@ -79,7 +80,7 @@ handle_info({tcp, Socket, ?ME++_}, S = #state{name=Nick, next=chat}) ->
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
-handle_info({tcp, Socket, ?PRIVATE++Rest}, S = #state{name=Nick, next=chat}) ->
+handle_info({tcp, Socket, ?PRIV++Rest}, S = #state{name=Nick, next=chat}) ->
     {Recv, [_|Msg]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Rest),
     gen_server:cast(?CONTROLLER, {private_message, Nick, Recv, clean(Msg)}),
     refresh_socket(Socket),
@@ -90,27 +91,27 @@ handle_info({tcp, Socket, ?HELP++_}, S = #state{name=Nick, next=chat}) ->
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
-handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, next=nick}) 
+handle_info({tcp, Socket, Str}, S = #state{next=nick}) 
   when Str =:= ?CRLF ; Str =:= ?CR ; Str =:= ?LF ->
     refresh_socket(Socket),
     {noreply, S#state{socket=Socket, next=nick}};
 
-handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, next=nick}) ->
+handle_info({tcp, Socket, Str}, S = #state{next=nick}) ->
     Reply = set_nick(Socket, clean(Str), S),
     refresh_socket(Socket),
     Reply;
 
-handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, name=Nick, next=chat})
+handle_info({tcp, Socket, Str}, S = #state{name=Nick, next=chat})
   when Str =:= ?CRLF ; Str =:= ?CR ; Str =:= ?LF ->
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
-handle_info({tcp, _Socket, ?IGNORE++_Str}, S = #state{socket=Socket, name=Nick, next=chat}) ->
+handle_info({tcp, Socket, ?IGNORE++_Str}, S = #state{name=Nick, next=chat}) ->
     io:format("We decided to keep this secret! ;-)~n", []),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
-handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, name=Nick, next=chat}) ->
+handle_info({tcp, Socket, Str}, S = #state{name=Nick, next=chat}) ->
     gen_server:cast(self(), {chat, Nick, clean(Str)}), 
     refresh_socket(Socket),
     {noreply, S};
