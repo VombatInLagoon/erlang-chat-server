@@ -54,6 +54,11 @@ handle_info({tcp, Socket, ?NICKS++_}, S = #state{name=Nick, next=chat}) ->
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
+handle_info({tcp, Socket, ?ME++_}, S = #state{name=Nick, next=chat}) ->
+    who_am_i(Nick, Socket),
+    refresh_socket(Socket),
+    {noreply, S#state{name=Nick, next=chat}};
+
 handle_info({tcp, Socket, ?PRIVATE++Rest}, S = #state{name=Nick, next=chat}) ->
     {Recv, [_|Msg]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Rest),
     gen_server:cast(controller, {private_message, Nick, Recv, clean(Msg)}),
@@ -133,6 +138,9 @@ set_nick(Socket, Nick, S) ->
             {noreply, S#state{socket=Socket, name=Nick, next=chat}}
     end.
 
+who_am_i(Nick, Socket) ->
+    send(Socket, Nick, []).
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Helpers.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -144,7 +152,8 @@ help(Socket, _Nick) ->
         "Your massages are broadcasted by default.~n" ++
         "In order to quit the chat enter !q.~n" ++
         "To send private message to a user start the message with !p:Nick ~n" ++
-        "To see list of all active nicks you can enter !n ~n",
+        "To see list of all active nicks you can enter !n ~n" ++
+        "To see your nick name enter !m ~n",
     send(Socket, Menu, []).    
 
 send(Socket, Str, Args) ->
