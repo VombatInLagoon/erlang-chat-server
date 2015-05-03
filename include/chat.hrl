@@ -12,3 +12,6 @@
 -define(QUIT, "!q").
 -define(IGNORE, "\\").
 -define(ME, "!m").
+
+-define(SERVER, chat_server).
+-define(CONTROLLER, chat_controller).
