@@ -40,50 +40,23 @@ handle_cast(accept, S = #state{socket=ListenSocket}) ->
          "Enter your nick name! ~n", []),
     {noreply, S#state{socket=AcceptSocket, next=nick}};
 
-handle_cast({set_nick, Socket, Nick}, S) ->
-    Response = gen_server:call(controller, {check_nick, Nick, Socket}),
-    case Response of 
-        nick_in_use -> 
-            send(Socket, "Nick in use! Pick something else.", []),
-            {noreply, S#state{socket=Socket, next=nick}};
-        {ok, _} ->
-            io:format("~p Joined chat! ~n", [Nick]),
-            send(Socket, "Your nick name is ~p. ~n"
-                         "You can always get some help using !h ~n"
-                       , [Nick]),
-            gen_server:cast(controller, {join, Nick}),
-            {noreply, S#state{socket=Socket, name=Nick, next=chat}}
-    end;
-
-handle_cast({private_msg, Socket, Nick, Recv, Msg}, S) ->
-    gen_server:cast(controller, {private_message, Nick, Recv, Msg}),
-    refresh_socket(Socket),
-    {noreply, S#state{name=Nick, next=chat}};
-
 handle_cast({chat, Nick, Str}, S) ->
     gen_server:cast(controller, {say, Nick, Str}),
-    {noreply, S#state{name=Nick, next=chat}};
-
-handle_cast({nicklist, Nick}, S) ->
-    gen_server:cast(controller, {nick_list, Nick}),
     {noreply, S#state{name=Nick, next=chat}}.
 
 %% clients input comming from socket
 handle_info({tcp, Socket, ?QUIT++_}, S = #state{name=Nick, next=chat}) ->
-    send(Socket, "Goodbye ~p", [Nick]),
-    io:format("~p Left the chat server! ~n", [Nick]),
-    gen_server:call(controller, {disconnect, Nick}),
-    gen_tcp:close(S#state.socket),
+    quit(Socket, Nick, S),
     {stop, normal, S};
 
 handle_info({tcp, Socket, ?NICKS++_}, S = #state{name=Nick, next=chat}) ->
-    gen_server:cast(self(), {nicklist, Nick}),
+    gen_server:cast(controller, {nick_list, Nick}),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
 handle_info({tcp, Socket, ?PRIVATE++Rest}, S = #state{name=Nick, next=chat}) ->
     {Recv, [_|Msg]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Rest),
-    gen_server:cast(self(), {private_msg, Socket, Nick, Recv, clean(Msg)}),
+    gen_server:cast(controller, {private_message, Nick, Recv, clean(Msg)}),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
@@ -98,9 +71,9 @@ handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, next=nick})
     {noreply, S#state{socket=Socket, next=nick}};
 
 handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, next=nick}) ->
-    gen_server:cast(self(), {set_nick, Socket, clean(Str)}),
+    Reply = set_nick(Socket, clean(Str), S),
     refresh_socket(Socket),
-    {noreply, S#state{socket=Socket, next=nick}};
+    Reply;
 
 handle_info({tcp, _Socket, Str}, S = #state{socket=Socket, name=Nick, next=chat})
   when Str =:= ?CRLF ; Str =:= ?CR ; Str =:= ?LF ->
@@ -136,9 +109,34 @@ terminate(normal, _State) ->
 terminate(_Reason, _State) ->
     io:format("terminate reason: ~p~n", [_Reason]).
 
-%%%%%%%%%%%%%%%%%%%%%%
-%% helpers
-%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Internal functions.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+quit(Socket, Nick, S) ->
+    send(Socket, "Goodbye ~p", [Nick]),
+    io:format("~p Left the chat server! ~n", [Nick]),
+    gen_server:call(controller, {disconnect, Nick}),
+    gen_tcp:close(S#state.socket).
+
+set_nick(Socket, Nick, S) ->
+    Response = gen_server:call(controller, {check_nick, Nick, Socket}),
+    case Response of 
+        nick_in_use -> 
+            send(Socket, "Nick in use! Pick something else.", []),
+            {noreply, S#state{socket=Socket, next=nick}};
+        {ok, _} ->
+            io:format("~p Joined chat! ~n", [Nick]),
+            send(Socket, "Your nick name is ~p. ~n"
+                         "You can always get some help using !h ~n"
+                       , [Nick]),
+            gen_server:cast(controller, {join, Nick}),
+            {noreply, S#state{socket=Socket, name=Nick, next=chat}}
+    end.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Helpers.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clean(Str) ->   
     hd(string:tokens(Str, "\r\n")).
 
