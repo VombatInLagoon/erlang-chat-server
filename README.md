@@ -1,5 +1,5 @@
 # erlang-chat-server
-A simple chat server written in Erlang/OTP.
+A simple but robust chat server written in Erlang/OTP.
 
 ## To compile 
 Run the `build` script from the base directory.
