@@ -21,6 +21,8 @@
          terminate/2,
          code_change/3]).
 
+-include("chat.hrl").
+
 %%%=============================================================================
 %%% API
 %%%=============================================================================
@@ -110,7 +112,7 @@ code_change(_OldVersion, State, _Extra) ->
 broadcast(Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
     UpdatedDict = dict:erase(Nick, Users),
-    Sockets = [Sock || {_, [Sock]} <- dict:to_list(UpdatedDict)],
+    Sockets = [Sock || {_, [Sock|_]} <- dict:to_list(UpdatedDict)],
     lists:map(fun(Sock) -> gen_tcp:send(Sock, FormatMsg) end, Sockets).
 
 user_list(Users) ->
@@ -119,7 +121,7 @@ user_list(Users) ->
 
 nick_list(Nick, Users) ->
     case dict:find(Nick, Users) of 
-        {ok, [Sock]} ->
+        {ok, [Sock|_]} ->
             Nicks = user_list(dict:erase(Nick, Users)),
             gen_tcp:send(Sock, "Online people: " ++ Nicks ++ "\n");
         _ -> ok    
@@ -129,8 +131,8 @@ private_message(Recv, Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
     Temp = dict:find(Recv, Users),
     case Temp of
-        {ok, SockAsList} ->
-            gen_tcp:send(hd(SockAsList), "**" ++ FormatMsg);
+        {ok, [Sock|_]} ->
+            gen_tcp:send(Sock, ?PRIVMARK ++ FormatMsg);
         _ ->
             ok
     end.
