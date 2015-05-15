@@ -109,7 +109,8 @@ code_change(_OldVersion, State, _Extra) ->
 
 broadcast(Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
-    Sockets = [hd(SockAsList) || {_, SockAsList} <- dict:to_list(dict:erase(Nick, Users))],
+    UpdatedDict = dict:erase(Nick, Users),
+    Sockets = [hd(SockAsList) || {_, SockAsList} <- dict:to_list(UpdatedDict)],
     lists:map(fun(Sock) -> gen_tcp:send(Sock, FormatMsg) end, Sockets).
 
 user_list(Users) ->
