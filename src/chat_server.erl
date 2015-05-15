@@ -81,8 +81,7 @@ handle_info({tcp, Socket, ?ME++_}, S = #state{name=Nick, next=chat}) ->
     {noreply, S#state{name=Nick, next=chat}};
 
 handle_info({tcp, Socket, ?PRIV++Rest}, S = #state{name=Nick, next=chat}) ->
-    {Recv, [_|Msg]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Rest),
-    gen_server:cast(?CONTROLLER, {private_message, Nick, Recv, clean(Msg)}),
+    send_private_msg(Socket, Nick, Rest),
     refresh_socket(Socket),
     {noreply, S#state{name=Nick, next=chat}};
 
@@ -145,6 +144,15 @@ quit(Socket, Nick, S) ->
     gen_server:call(?CONTROLLER, {disconnect, Nick}),
     gen_tcp:close(S#state.socket).
 
+send_private_msg(Socket, Nick, RawMsg) ->
+    case string:tokens(RawMsg, ":") of
+        [Reciver, Msg] -> 
+            gen_server:cast(?CONTROLLER, {private_message, Nick, Reciver, 
+                                          clean(Msg)});
+        _ -> send(Socket, "Malformed private message. ~n"
+                          "Use format !p:Nick:Message ~n", [])
+    end. 
+
 set_nick(Socket, Nick, S) ->
     Response = gen_server:call(?CONTROLLER, {check_nick, Nick, Socket}),
     case Response of 
@@ -174,7 +182,7 @@ help(Socket, _Nick) ->
     Menu = 
         "Your massages are broadcasted by default.~n" ++
         "In order to quit the chat enter !q.~n" ++
-        "To send private message to a user start the message with !p:Nick ~n" ++
+        "To send private message to users use !p:Nick:Message ~n" ++
         "To see list of all active nicks you can enter !n ~n" ++
         "To see your nick name enter !m ~n",
     send(Socket, Menu, []).    
