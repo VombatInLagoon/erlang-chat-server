@@ -110,7 +110,7 @@ code_change(_OldVersion, State, _Extra) ->
 broadcast(Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
     UpdatedDict = dict:erase(Nick, Users),
-    Sockets = [hd(SockAsList) || {_, SockAsList} <- dict:to_list(UpdatedDict)],
+    Sockets = [Sock || {_, [Sock]} <- dict:to_list(UpdatedDict)],
     lists:map(fun(Sock) -> gen_tcp:send(Sock, FormatMsg) end, Sockets).
 
 user_list(Users) ->
@@ -119,9 +119,9 @@ user_list(Users) ->
 
 nick_list(Nick, Users) ->
     case dict:find(Nick, Users) of 
-        {ok, SockAsList} ->
+        {ok, [Sock]} ->
             Nicks = user_list(dict:erase(Nick, Users)),
-            gen_tcp:send(hd(SockAsList), "Online people: " ++ Nicks ++ "\n");
+            gen_tcp:send(Sock, "Online people: " ++ Nicks ++ "\n");
         _ -> ok    
     end.
 
