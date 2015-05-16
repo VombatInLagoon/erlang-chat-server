@@ -58,7 +58,8 @@ handle_cast(accept, S = #state{socket=ListenSocket}) ->
     chat_server_sup:start_socket(),
     send(AcceptSocket, 
          "Welcome to the chat server. ~n"
-         "Enter your nick name! ~n", []),
+         "Please choose a nick name.  ~n"
+         "Note that nick names are case sensitive! ~n", []),
     {noreply, S#state{socket=AcceptSocket, next=nick}};
 
 handle_cast({chat, Nick, Str}, S) ->
@@ -125,10 +126,14 @@ handle_info(E, S) ->
     io:format("unexpected: ~p~n", [E]),
     {noreply, S}.
 
-terminate(normal, _State) ->
+terminate(normal, S = #state{name=Nick}) ->
+    gen_server:call(?CONTROLLER, {disconnect, Nick}),
+    gen_tcp:close(S#state.socket),
     ok;
 
-terminate(_Reason, _State) ->
+terminate(_Reason, S = #state{name=Nick}) ->
+    gen_server:call(?CONTROLLER, {disconnect, Nick}),
+    gen_tcp:close(S#state.socket),
     io:format("terminate reason: ~p~n", [_Reason]).
 
 code_change(_OldVsn, State, _Extra) ->
@@ -179,13 +184,15 @@ clean(Str) ->
     hd(string:tokens(Str, "\r\n")).
 
 help(Socket, _Nick) ->  
-    Menu = 
-        "Your massages are broadcasted by default.~n" ++
-        "In order to quit the chat enter !q.~n" ++
-        "To send private message to users use !p:Nick:Message ~n" ++
-        "To see list of all active nicks you can enter !n ~n" ++
-        "To see your nick name enter !m ~n",
-    send(Socket, Menu, []).    
+    HelpMenu = 
+        "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%~n" ++
+        "%%% Your massages are broadcasted by default!            %%%~n" ++
+        "%%% In order to quit the chat enter !q                   %%%~n" ++
+        "%%% To send private message to users use !p:Nick:Message %%%~n" ++
+        "%%% To see list of all active nicks you can enter !n     %%%~n" ++
+        "%%% To see your nick name enter !m                       %%%~n" ++
+        "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%~n",
+    send(Socket, HelpMenu, []).    
 
 send(Socket, Str, Args) ->
     ok = gen_tcp:send(Socket, io_lib:format(Str++"~n", Args)),
