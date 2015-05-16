@@ -1,5 +1,5 @@
 {application, chat, 
-  [{description, "Robust Chat Server"},
+  [{description, "Simple but robust Chat Server"},
    {vsn, "0.1"},
    {modules, [chat, chat_server, chat_server_sup, 
               chat_controller, chat_controller_supervisor]},
