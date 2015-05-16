@@ -50,7 +50,7 @@ init([]) ->
     {ok, {{simple_one_for_one, 60, 3600},
           [{?SERVER,
             {?SERVER, start_link, [ListenSocket]}, % pass the socket!
-            temporary, 1000, worker, [?SERVER]}
+            temporary, 5000, worker, [?SERVER]}
           ]}}.
 
 
