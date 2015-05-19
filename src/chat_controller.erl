@@ -113,7 +113,7 @@ broadcast(Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
     UpdatedDict = dict:erase(Nick, Users),
     Sockets = [Sock || {_, [Sock|_]} <- dict:to_list(UpdatedDict)],
-    lists:map(fun(Sock) -> gen_tcp:send(Sock, FormatMsg) end, Sockets).
+    lists:foreach(fun(Sock) -> gen_tcp:send(Sock, FormatMsg) end, Sockets).
 
 user_list(Users) ->
     UserList = dict:fetch_keys(Users),
