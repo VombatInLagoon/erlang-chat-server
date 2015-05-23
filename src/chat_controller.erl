@@ -43,32 +43,18 @@ start() ->
 %%%=============================================================================
 
 init([]) ->
-    % dictionary is used to keep track of online users
+    % ets table is used to keep track of online users (nicks)
     % and their associated sockets.
-    Users = dict:new(),
+    Users = ets:new(users,[set]),
     {ok, Users}.
 
-handle_call({check_nick, Nick, Socket}, _From, Users) ->
-    Response = case dict:is_key(Nick, Users) of
-                   true ->
-                       NewUsers = Users,
-                       nick_in_use;
-                   false ->
-                       NewUsers = dict:append(Nick, Socket, Users),
-                       {ok, user_list(NewUsers)}
-               end,
-    {reply, Response, NewUsers};
+handle_call({check_nick, Nick, Socket}, _From, Users) ->  
+    Response = check_nick(Nick, Users, Socket),
+    {reply, Response, Users};
 
 handle_call({disconnect, Nick}, _From, Users) ->
-    Response = case dict:is_key(Nick, Users) of
-                   true ->
-                       NewUsers = dict:erase(Nick, Users),
-                       ok;
-                   false ->
-                       NewUsers = Users,
-                       user_not_found
-               end,
-    {reply, Response, NewUsers};
+    Response = disconnect_nick(Nick, Users),
+    {reply, Response, Users};
 
 handle_call(_Message, _From, State) ->
     {reply, error, State}.
@@ -77,8 +63,8 @@ handle_cast({say, Nick, Msg}, Users) ->
     broadcast(Nick, Msg, Users),
     {noreply, Users}; 
 
-handle_cast({nick_list, Nick}, Users) ->
-    nick_list(Nick, Users),
+handle_cast({nick_list, Socket}, Users) ->
+    nick_list(Socket, Users),
     {noreply, Users};
 
 handle_cast({private_message, Nick, Recv, Msg}, Users) ->
@@ -111,31 +97,32 @@ code_change(_OldVersion, State, _Extra) ->
 
 broadcast(Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
-    UpdatedDict = dict:erase(Nick, Users),
-    Sockets = [Sock || {_, [Sock|_]} <- dict:to_list(UpdatedDict)],
+    Sockets = [Sock || {N, Sock} <- ets:tab2list(Users), N =/= Nick],
     lists:foreach(fun(Sock) -> gen_tcp:send(Sock, FormatMsg) end, Sockets).
 
-user_list(Users) ->
-    UserList = dict:fetch_keys(Users),
-    string:join(UserList, " ").
+nick_list(Socket, Users) ->
+    Nicks = [N ++ " " || {N, S} <- ets:tab2list(Users), S =/= Socket],
+    gen_tcp:send(Socket, "Online people: " ++ Nicks ++ "\n").
 
-nick_list(Nick, Users) ->
-    case dict:find(Nick, Users) of 
-        {ok, [Sock|_]} ->
-            Nicks = user_list(dict:erase(Nick, Users)),
-            gen_tcp:send(Sock, "Online people: " ++ Nicks ++ "\n");
-        _ -> ok    
-    end.
-
-private_message(Recv, Nick, Msg, Users) ->
+private_message(Reciver, Nick, Msg, Users) ->
     FormatMsg = format_message(Nick, Msg),
-    Temp = dict:find(Recv, Users),
-    case Temp of
-        {ok, [Sock|_]} ->
-            gen_tcp:send(Sock, ?PRIVMARK ++ FormatMsg);
-        _ ->
-            ok
+    case ets:lookup(Users, Reciver) of
+        [] -> ok;
+        [{_,Sock}] ->
+            gen_tcp:send(Sock, ?PRIVMARK ++ FormatMsg)
     end.
+
+check_nick(Nick, Users, Socket) ->
+    case ets:insert_new(Users, {Nick, Socket}) of
+        true ->
+            ok;
+        false ->
+            nick_in_use
+    end.
+
+disconnect_nick(Nick, Users) ->
+    ets:delete(Users, Nick),
+    {ok, Users}.
 
 %%%=============================================================================
 %%% Helper functions

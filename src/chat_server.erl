@@ -71,10 +71,10 @@ handle_info({tcp, Socket, ?QUIT++_}, S = #state{name=Nick, next=chat}) ->
     quit(Socket, Nick, S),
     {stop, normal, S};
 
-handle_info({tcp, Socket, ?NICKS++_}, S = #state{name=Nick, next=chat}) ->
-    gen_server:cast(?CONTROLLER, {nick_list, Nick}),
+handle_info({tcp, Socket, ?NICKS++_}, S = #state{next=chat}) ->
+    gen_server:cast(?CONTROLLER, {nick_list, Socket}),
     refresh_socket(Socket),
-    {noreply, S#state{name=Nick, next=chat}};
+    {noreply, S#state{next=chat}};
 
 handle_info({tcp, Socket, ?ME++_}, S = #state{name=Nick, next=chat}) ->
     who_am_i(Nick, Socket),
@@ -164,7 +164,7 @@ set_nick(Socket, Nick, S) ->
         nick_in_use -> 
             send(Socket, "Nick in use! Pick something else.", []),
             {noreply, S#state{socket=Socket, next=nick}};
-        {ok, _} ->
+        ok ->
             io:format("~p Joined chat! ~n", [Nick]),
             send(Socket, "Your nick name is ~p. ~n"
                          "You can always get some help using !h ~n"
